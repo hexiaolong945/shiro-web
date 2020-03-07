@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd">
+
+	
+
+
+	<!-- 配置SpringMVC对抛出的异常解析的对象 -->
+	<bean
+		class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">
+		<property name="exceptionMappings">
+			<props>
+				<!-- 没有权限异常跳转的页面 
+					要跳转的页面，如果SpringMVC配置视图解析的前后缀，就必须按照视图解析的方式配
+					配置对应的视图
+				-->
+				<prop key="org.apache.shiro.authz.UnauthorizedException">unauthorized</prop>
+			</props>
+		</property>
+	</bean>
+
+	 <!-- 开启Spring的目标类可以支持AOP -->
+	 <aop:config proxy-target-class="true" />
+	 <!-- 开启shiro的注解支持 -->
+	<bean
+		class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+		<!-- 注入安全管理器 -->
+		<property name="securityManager" ref="securityManager"/>
+	</bean>
+	 
+	 
+	 <!-- 配置Shiro框架的核心过滤器 
+	 	org.apache.shiro.spring.web.ShiroFilterFactoryBean
+	 -->
+	 
+	 <!-- 配置自定义表单认证过滤器 -->
+	 <bean id="myFormAuthenticationFilter" class="com.sxt.ssm.shiro.MyFormAuthenticationFilter" >
+	 	<!-- 自定义认证账号名称 -->
+	 	<property name="usernameParam" value="uname" />
+	 	<property name="passwordParam" value="pwd" />
+	 	<property name="rememberMeParam" value="relme " />
+	 </bean>
+	 
+	 <!-- 重新配置LogoutFilter退出认证过滤器 -->
+	 <bean id="customLogoutFilter" class="org.apache.shiro.web.filter.authc.LogoutFilter" >
+	 	<!-- 重新设置退出登录跳转的路径 -->
+	 	<property name="redirectUrl" value="/login.jsp" />
+	 </bean>
+	 	
+	 
+	 
+	<bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+	
+		<!-- 配置自定义的过滤器 -->
+		<property name="filters">
+			<map>
+				<!-- 把开发者自定义配置过滤器，设置为Shiro过滤器 -->
+				<entry key="logout" value-ref="customLogoutFilter" />
+				<entry key="authc" value-ref="myFormAuthenticationFilter" />
+			</map>
+		</property>
+		
+		<!-- 配置安全管理器 -->
+		<property name="securityManager" ref="securityManager" />
+		<!-- 配置认证成功访问页面，一般都是后台页面 -->
+		<property name="successUrl" value="/index.do" />
+		
+		<!-- 配置认证失败跳转页面：/user/login.do -->
+		<property name="loginUrl" value="/user/login.do" />
+		
+		<!-- 配置认证成功以后，强制访问没有权限的页面，跳转的提示页面 -->
+		<property name="unauthorizedUrl" value="/unauthorized.jsp" />
+		
+		<!-- 配置过滤器链 
+			因为Shiro框架集成配置/*，整个项目的所有请求都会经过Shiro框架，
+			项目任何资源都先经过Shiro框架，一个项目的资源很多，而且分类很多：
+				如：静态资源-不需要任何认证直接可以访问
+					认证资源-需要登录以后才能访问的页面，但是可能访问不需要权限
+					授权资源：认证成功以后，访问还需要权限才能访问
+				因为各种资源比较复杂，Shiro针对不同类型的资源设计了11个过滤器，根据不同的情况进行配置即可
+				
+				不同的过滤器Shiro框架取了别名（用别名就代表用这个过滤器）
+		-->
+		<property name="filterChainDefinitions">
+			
+			<!-- 过滤器链条配置规则
+				
+				/资源1=过滤器别名1
+				/资源2=过滤器别名2
+				
+				过滤器是从上到下匹配，上面匹配成功，下面就不再匹配
+			 -->
+			<value>
+				<!-- anon:配置匿名过滤器：直接放行 -->
+				<!--/**表示多级目录 -->
+				/css/**=anon
+				/images/**=anon
+				
+				<!-- 登录页面 -->
+				/login.jsp=anon
+				
+				<!-- logout：退出认证过滤器 -->
+				/logout.do=logout
+				
+				<!-- 权限判断过滤器 -->
+				<!-- /user/list.do=perms[user:list]
+				/role/list.do=perms[role:list] -->
+				
+				
+				<!-- 配置“记住我”过滤器 -->
+				/index.do=user
+				/role/list.do=user
+				
+				<!-- authc：经过认证（登录）才能通过 -->
+				/**=authc
+			</value>
+		</property>
+		
+	</bean>
+	
+	<!-- 配置安全管理器 -->
+	<bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager" >
+		
+		<!-- 配置自定义Realm -->
+		<property name="realm" ref="customRealm" />
+		
+		<!-- 配置缓存管理器 -->
+		<property name="cacheManager" ref="cacheManager" />
+		
+		<!-- 配置会话管理器 -->
+		<property name="sessionManager" ref="sessionManager" />
+		
+		<!-- 配置记住我管理器 -->
+		<property name="rememberMeManager" ref="rememberMeManager" />
+		
+	</bean>
+	
+	<bean id="rememberMeManager" class="org.apache.shiro.web.mgt.CookieRememberMeManager" >
+		<!-- 配置Cookie -->
+		<property name="cookie" >
+			<bean class="org.apache.shiro.web.servlet.SimpleCookie">
+				<!-- 构造器注入，创建Cookie对象就设置Cookie的名称 -->
+				<constructor-arg name="name" value="user" />
+				
+				<!-- 设置Cookie的时长，seconds 秒 -->
+				<property name="maxAge" value="#{3600 *24 * 7}" />
+			</bean>
+		</property>
+	</bean>
+	
+	<!-- 配置会话管理器SessionManager -->
+	<bean id="sessionManager" class="org.apache.shiro.web.session.mgt.DefaultWebSessionManager">
+		<!-- 设置超时时间：单位毫秒 -->
+		<property name="globalSessionTimeout" value="#{1000 * 60 * 300}" />
+		
+	</bean>
+	
+	
+	<!-- 配置缓存管理器 -->
+	<bean id="cacheManager" class="org.apache.shiro.cache.ehcache.EhCacheManager">
+		
+	</bean>
+	
+		<!-- 配置自定义Realm -->
+	<bean id="customRealm" class="com.sxt.ssm.shiro.CustomRealm">
+		<!-- 凭证匹配器 -->
+		<property name="credentialsMatcher" ref="setCredentialsMatcher" />
+	</bean>
+	
+	<!-- 配置凭证匹配器 -->
+	<bean id="setCredentialsMatcher" class="org.apache.shiro.authc.credential.HashedCredentialsMatcher">
+		<!-- 配置算法 -->
+		<property name="hashAlgorithmName" value="MD5" />
+		<!-- 加密次数 -->
+		<property name="hashIterations" value="3"></property>
+	</bean>
+	
+</beans>

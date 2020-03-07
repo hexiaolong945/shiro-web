@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee" xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
+
+	<!-- 
+		1.Shiro框架Web项目底层是基于Filter过滤器开发封装的
+		如果没有和Spring集成，那么项目集成Shiro框架就必须在web.xml文件中配置Shiro过滤器
+		但是，我们一般框架都会和Spring框架集成（好让Spring管理框架）
+		所有Shiro的所有配置都会在Spring框架中配置完成
+	 -->
+	
+	<!-- 
+		Spring框架的过滤器，告诉Spring框架，某一个（Shiro框架到的过滤器）过滤器要交给Spring管理
+		targetFilterLifecycle：目标过滤器的生命周期（Shiro框架过滤器）
+	 -->
+	<filter>
+		<filter-name>shiroFilter</filter-name>
+		<filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
+		<init-param>
+			<param-name>targetFilterLifecycle</param-name>
+			<param-value>true</param-value>
+		</init-param>
+		<!-- 指定被Spring管理的Shiro过滤器的名称 
+			可以不写，如果不写，必须和<filter-name>shiroFilter</filter-name>内容相同
+		-->
+		<init-param>
+			<param-name>targetBeanName</param-name>
+			<param-value>shiroFilter</param-value>
+		</init-param>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>shiroFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+	
+	  <!-- The front controller of this Spring Web application, responsible for handling all application requests -->
+	<servlet>
+		<servlet-name>springDispatcherServlet</servlet-name>
+		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+		<init-param>
+			<param-name>contextConfigLocation</param-name>
+			<param-value>classpath:spring*.xml</param-value>
+		</init-param>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<!-- Map all requests to the DispatcherServlet for handling -->
+	<servlet-mapping>
+		<servlet-name>springDispatcherServlet</servlet-name>
+		<url-pattern>*.do</url-pattern>
+	</servlet-mapping>
+  
+</web-app>
