@@ -48,4 +48,11 @@ public class UserController {
 		
 		return "user_list";
 	}
+	
+	@RequestMapping("/delete")
+	public String delete(Integer userId) {
+		
+		System.out.println("Ö´ÐÐÉ¾³ý²Ù×÷¡£¡£¡£");
+		return "redirect:/user/list.do";
+	}
 }
